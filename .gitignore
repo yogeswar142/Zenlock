@@ -1,16 +1,34 @@
+# Android
+.gradle/
+build/
+app/build/
+Android/.gradle/
+Android/build/
+Android/app/build/
+Android/local.properties
+Android/.idea/
 *.iml
-.gradle
-/local.properties
-/.idea
+
+# IDE
+.idea/
 .DS_Store
-/build
-/captures
-.externalNativeBuild
-.cxx
-local.properties
-/app/build
-/assets
+*.swp
 
 # Backend
-.env
 node_modules/
+.env
+Backend/node_modules/
+Backend/.env
+
+# Captures
+captures/
+
+# Assets & Design
+assets/
+client_secret_*.json
+Backend/client_secret_*.json
+
+# assets
+assets/client_secret_*.json
+assets/zenlock-ui/
+
