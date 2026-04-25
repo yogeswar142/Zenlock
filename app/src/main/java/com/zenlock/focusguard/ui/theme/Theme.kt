@@ -9,28 +9,43 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
-private val DarkColorScheme = darkColorScheme(
-    primary = Purple60,
+/**
+ * Zenlock Material 3 dark color scheme – "Digital Sanctuary."
+ */
+private val ZenlockColorScheme = darkColorScheme(
+    primary = ZenPrimaryContainer,
     onPrimary = Color.White,
-    primaryContainer = PurpleDark,
-    onPrimaryContainer = Purple80,
-    secondary = Cyan,
+    primaryContainer = ZenPrimaryContainer,
+    onPrimaryContainer = ZenOnPrimaryContainer,
+    inversePrimary = ZenInversePrimary,
+    secondary = ZenSecondary,
     onSecondary = Color.Black,
-    secondaryContainer = CyanDark,
-    tertiary = Coral,
-    background = DarkBg,
-    onBackground = TextPrimary,
-    surface = DarkSurface,
-    onSurface = TextPrimary,
-    surfaceVariant = DarkSurfaceVariant,
-    onSurfaceVariant = TextSecondary,
-    error = ErrorRed,
-    onError = Color.White
+    secondaryContainer = ZenSecondaryContainer,
+    tertiary = ZenTertiary,
+    tertiaryContainer = ZenTertiaryContainer,
+    background = ZenBackground,
+    onBackground = ZenOnBackground,
+    surface = ZenSurface,
+    onSurface = ZenOnSurface,
+    surfaceVariant = ZenSurfaceVariant,
+    onSurfaceVariant = ZenOnSurfaceVariant,
+    surfaceContainerLowest = ZenSurfaceContainerLowest,
+    surfaceContainerLow = ZenSurfaceContainerLow,
+    surfaceContainer = ZenSurfaceContainer,
+    surfaceContainerHigh = ZenSurfaceContainerHigh,
+    surfaceContainerHighest = ZenSurfaceContainerHighest,
+    surfaceBright = ZenSurfaceBright,
+    surfaceDim = ZenSurfaceDim,
+    outline = ZenOutline,
+    outlineVariant = ZenOutlineVariant,
+    error = ZenError,
+    onError = ZenOnError,
+    errorContainer = ZenErrorContainer,
 )
 
 @Composable
 fun FocusGuardTheme(content: @Composable () -> Unit) {
-    val colorScheme = DarkColorScheme
+    val colorScheme = ZenlockColorScheme
     val view = LocalView.current
 
     if (!view.isInEditMode) {
@@ -38,7 +53,7 @@ fun FocusGuardTheme(content: @Composable () -> Unit) {
             val window = (view.context as? Activity)?.window
             window?.let {
                 it.statusBarColor = Color.Transparent.toArgb()
-                it.navigationBarColor = DarkBg.toArgb()
+                it.navigationBarColor = ZenBackground.toArgb()
                 WindowCompat.getInsetsController(it, view).isAppearanceLightStatusBars = false
             }
         }
@@ -46,7 +61,7 @@ fun FocusGuardTheme(content: @Composable () -> Unit) {
 
     MaterialTheme(
         colorScheme = colorScheme,
-        typography = Typography,
+        typography = ZenlockTypography,
         content = content
     )
 }

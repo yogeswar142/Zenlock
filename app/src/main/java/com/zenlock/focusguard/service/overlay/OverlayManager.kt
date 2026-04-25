@@ -8,28 +8,28 @@ import android.view.WindowManager
 import android.widget.FrameLayout
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.scale
-import kotlinx.coroutines.delay
+import androidx.compose.ui.unit.sp
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LifecycleRegistry
@@ -38,6 +38,7 @@ import androidx.savedstate.SavedStateRegistry
 import androidx.savedstate.SavedStateRegistryController
 import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
+import kotlinx.coroutines.delay
 
 /**
  * Manages the full-screen blocking overlay displayed when a blocked app is opened.
@@ -54,9 +55,9 @@ class OverlayManager(private val context: Context) {
 
     // Motivational quotes
     private val quotes = listOf(
+        "Your future self will thank you for the focus you find today.",
         "The secret of getting ahead is getting started.",
         "Focus on being productive instead of busy.",
-        "It's not about having time, it's about making time.",
         "Stay focused, go after your dreams and keep moving toward your goals.",
         "The successful warrior is the average man, with laser-like focus.",
         "Concentrate all your thoughts upon the work at hand.",
@@ -69,7 +70,7 @@ class OverlayManager(private val context: Context) {
     /**
      * Show the blocking overlay with an optional custom message.
      */
-    fun showOverlay(reason: String = "This app is blocked during your focus session", onGoBackAction: () -> Unit = {}) {
+    fun showOverlay(reason: String = "This app is temporarily blocked", onGoBackAction: () -> Unit = {}) {
         if (isShowing) return
 
         try {
@@ -136,8 +137,23 @@ class OverlayManager(private val context: Context) {
     fun isOverlayShowing(): Boolean = isShowing
 }
 
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// Zenlock "Digital Sanctuary" Overlay Design
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+// Color constants – overlay runs outside the theme so we define them inline
+private val OverlayBg = Color(0xFF0A0E17)
+private val OverlayPrimaryContainer = Color(0xFF9D7BFF)
+private val OverlayOnPrimaryContainer = Color(0xFF320085)
+private val OverlayPrimary = Color(0xFFCEBDFF)
+private val OverlayOnSurface = Color(0xFFE6E0EC)
+private val OverlayOnSurfaceVariant = Color(0xFFCBC3D5)
+private val OverlayCard = Color(0xFF1F2937)
+private val OverlayOutline = Color(0xFF948E9F)
+
 /**
- * Compose UI for the full-screen blocking overlay.
+ * Compose UI for the "Focus Mode Active" overlay.
+ * Matches the blocked_app_overlay design screenshot.
  */
 @Composable
 private fun BlockingOverlayContent(
@@ -150,111 +166,209 @@ private fun BlockingOverlayContent(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    colors = listOf(
-                        Color(0xFF0F0C29),
-                        Color(0xFF302B63),
-                        Color(0xFF24243E)
+            .background(OverlayBg)
+    ) {
+        // ── Radial glows ──
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(400.dp)
+                .align(Alignment.TopCenter)
+                .background(
+                    Brush.radialGradient(
+                        colors = listOf(
+                            OverlayPrimaryContainer.copy(alpha = 0.12f),
+                            Color.Transparent
+                        ),
+                        radius = 600f
                     )
                 )
-            ),
-        contentAlignment = Alignment.Center
-    ) {
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(300.dp)
+                .align(Alignment.BottomCenter)
+                .background(
+                    Brush.radialGradient(
+                        colors = listOf(
+                            Color(0xFF6844C7).copy(alpha = 0.08f),
+                            Color.Transparent
+                        ),
+                        radius = 500f
+                    )
+                )
+        )
+
         if (isBreathing) {
             BreatheExercise(onComplete = onGoBack)
         } else {
+            // ── Main Content ──
             Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
-                modifier = Modifier.padding(32.dp)
+                verticalArrangement = Arrangement.SpaceBetween
             ) {
-                // Lock icon
-                Icon(
-                    imageVector = Icons.Default.Lock,
-                    contentDescription = "Blocked",
-                    tint = Color(0xFFFF6B6B),
-                    modifier = Modifier.size(80.dp)
-                )
+                Spacer(modifier = Modifier.weight(0.15f))
 
-                Spacer(modifier = Modifier.height(24.dp))
+                // Lock icon with glow
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(
+                        imageVector = Icons.Default.Lock,
+                        contentDescription = "Locked",
+                        tint = OverlayPrimaryContainer,
+                        modifier = Modifier.size(72.dp)
+                    )
 
-                // Title
-                Text(
-                    text = "🛡️ FocusGuard Active",
-                    fontSize = 28.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White,
-                    textAlign = TextAlign.Center
-                )
+                    Spacer(modifier = Modifier.height(20.dp))
 
-                Spacer(modifier = Modifier.height(16.dp))
+                    // Title
+                    Text(
+                        text = "Focus Mode\nActive",
+                        fontSize = 40.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = OverlayOnSurface,
+                        textAlign = TextAlign.Center,
+                        lineHeight = 44.sp
+                    )
 
-                // Reason
-                Text(
-                    text = reason,
-                    fontSize = 16.sp,
-                    color = Color(0xFFB0B0B0),
-                    textAlign = TextAlign.Center
-                )
+                    Spacer(modifier = Modifier.height(8.dp))
 
-                Spacer(modifier = Modifier.height(32.dp))
+                    Text(
+                        text = reason,
+                        fontSize = 16.sp,
+                        color = OverlayOnSurfaceVariant,
+                        textAlign = TextAlign.Center
+                    )
+                }
 
-                // Motivational quote card
+                Spacer(modifier = Modifier.weight(0.08f))
+
+                // ── Motivational Quote Card (glassmorphism) ──
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),
                     colors = CardDefaults.cardColors(
-                        containerColor = Color(0x33FFFFFF)
+                        containerColor = OverlayCard.copy(alpha = 0.5f)
+                    ),
+                    border = androidx.compose.foundation.BorderStroke(
+                        1.dp,
+                        Color.White.copy(alpha = 0.08f)
                     )
                 ) {
                     Column(
-                        modifier = Modifier.padding(20.dp),
+                        modifier = Modifier.padding(28.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
+                        // Quote marks
                         Text(
-                            text = "💡",
-                            fontSize = 24.sp
+                            text = "❝",
+                            fontSize = 24.sp,
+                            color = OverlayPrimary.copy(alpha = 0.4f)
                         )
+
                         Spacer(modifier = Modifier.height(8.dp))
+
                         Text(
-                            text = "\"$quote\"",
-                            fontSize = 14.sp,
-                            color = Color(0xFFE0E0E0),
+                            text = quote,
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = OverlayOnSurface,
                             textAlign = TextAlign.Center,
-                            fontWeight = FontWeight.Medium
+                            lineHeight = 28.sp
+                        )
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // Accent line
+                        Box(
+                            modifier = Modifier
+                                .width(40.dp)
+                                .height(2.dp)
+                                .background(
+                                    OverlayPrimary.copy(alpha = 0.2f),
+                                    RoundedCornerShape(50)
+                                )
                         )
                     }
                 }
 
-                Spacer(modifier = Modifier.height(40.dp))
+                Spacer(modifier = Modifier.weight(0.08f))
 
-                // Go Back button
-                Button(
-                    onClick = { isBreathing = true },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF7B68EE)
-                    ),
-                    shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(52.dp)
+                // ── Refocus Button ──
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text(
-                        text = "Refocus & Go Back",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
+                    Button(
+                        onClick = { isBreathing = true },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(52.dp),
+                        shape = RoundedCornerShape(50),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = OverlayPrimaryContainer
+                        )
+                    ) {
+                        Icon(
+                            Icons.Default.ArrowBack,
+                            "Go Back",
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Refocus & Go Back",
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Zenlock branding
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        modifier = Modifier.alpha(0.4f)
+                    ) {
+                        Text(
+                            text = "Zenlock",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = OverlayOnSurface,
+                            letterSpacing = (-0.5).sp
+                        )
+                        Box(
+                            modifier = Modifier
+                                .size(4.dp)
+                                .background(OverlayPrimaryContainer, CircleShape)
+                        )
+                        Text(
+                            text = "SECURITY",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = OverlayOnSurface,
+                            letterSpacing = 3.sp
+                        )
+                    }
                 }
+
+                Spacer(modifier = Modifier.weight(0.05f))
             }
         }
     }
 }
 
+/**
+ * Breathing exercise – "Digital Sanctuary" variant.
+ * Large orb with radial gradient, Breathe In / Hold / Breathe Out phases,
+ * heart icon at center, close (X) + "DIGITAL SANCTUARY" header.
+ */
 @Composable
 private fun BreatheExercise(onComplete: () -> Unit) {
     var phase by remember { mutableStateOf(0) }
-    
+
     LaunchedEffect(Unit) {
         delay(500)
         phase = 1 // Breathe In
@@ -286,56 +400,164 @@ private fun BreatheExercise(onComplete: () -> Unit) {
         label = "breathAlpha"
     )
 
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-        modifier = Modifier.fillMaxSize().padding(32.dp)
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(OverlayBg)
     ) {
-        Text(
-            text = "Take a moment...",
-            color = Color.White.copy(alpha = 0.7f),
-            fontSize = 18.sp,
-            modifier = Modifier.padding(bottom = 60.dp)
-        )
-        
+        // ── Background decorative blurs ──
         Box(
-            contentAlignment = Alignment.Center,
-            modifier = Modifier.size(100.dp)
+            modifier = Modifier
+                .size(380.dp)
+                .align(Alignment.BottomStart)
+                .offset(x = (-80).dp, y = 80.dp)
+                .background(
+                    Brush.radialGradient(
+                        colors = listOf(
+                            OverlayPrimaryContainer.copy(alpha = 0.05f),
+                            Color.Transparent
+                        )
+                    ),
+                    CircleShape
+                )
+        )
+        Box(
+            modifier = Modifier
+                .size(380.dp)
+                .align(Alignment.TopEnd)
+                .offset(x = 80.dp, y = (-80).dp)
+                .background(
+                    Brush.radialGradient(
+                        colors = listOf(
+                            OverlayOnPrimaryContainer.copy(alpha = 0.08f),
+                            Color.Transparent
+                        )
+                    ),
+                    CircleShape
+                )
+        )
+
+        // ── Header: X + DIGITAL SANCTUARY ──
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp, vertical = 20.dp)
+                .statusBarsPadding()
+                .align(Alignment.TopCenter),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            // Expanding circle
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .scale(scale)
-                    .background(Color(0xFF7B68EE).copy(alpha = 0.4f), shape = CircleShape)
+            // Spacer to balance
+            Spacer(modifier = Modifier.weight(1f))
+            Text(
+                text = "DIGITAL SANCTUARY",
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Medium,
+                color = Color.White.copy(alpha = 0.4f),
+                letterSpacing = 4.sp
             )
-            
-            // Inner core
-            Icon(
-                imageVector = Icons.Default.Favorite,
-                contentDescription = null,
-                tint = Color(0xFF7B68EE),
-                modifier = Modifier.size(32.dp)
-            )
+            Spacer(modifier = Modifier.weight(1f))
         }
-        
-        Spacer(modifier = Modifier.height(80.dp))
-        
-        Text(
-            text = when (phase) {
-                1 -> "Breathe In..."
-                2 -> "Hold..."
-                3 -> "Breathe Out..."
-                else -> ""
-            },
-            color = Color.White,
-            fontSize = 24.sp,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.alpha(alpha)
+
+        // ── Center Content ──
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            // Phase text
+            Text(
+                text = when (phase) {
+                    1 -> "Breathe In..."
+                    2 -> "Hold..."
+                    3 -> "Breathe Out..."
+                    else -> ""
+                },
+                fontSize = 24.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = OverlayPrimary.copy(alpha = alpha * 0.8f),
+                letterSpacing = 2.sp
+            )
+
+            Spacer(modifier = Modifier.height(40.dp))
+
+            // ── Breathing Orb ──
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier.size(260.dp)
+            ) {
+                // Outer ring
+                Box(
+                    modifier = Modifier
+                        .size(260.dp)
+                        .background(Color.Transparent)
+                        .alpha(0.2f)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(
+                                Color.Transparent,
+                                CircleShape
+                            )
+                            .then(
+                                Modifier.background(
+                                    Brush.radialGradient(
+                                        colors = listOf(
+                                            Color.Transparent,
+                                            Color.White.copy(alpha = 0.05f)
+                                        )
+                                    ),
+                                    CircleShape
+                                )
+                            )
+                    )
+                }
+
+                // Expanding orb
+                Box(
+                    modifier = Modifier
+                        .size(100.dp)
+                        .scale(scale)
+                        .background(
+                            Brush.radialGradient(
+                                colors = listOf(
+                                    OverlayPrimaryContainer.copy(alpha = 0.15f),
+                                    OverlayBg.copy(alpha = 0f)
+                                )
+                            ),
+                            CircleShape
+                        )
+                )
+
+                // Inner core icon
+                Icon(
+                    imageVector = Icons.Default.Favorite,
+                    contentDescription = null,
+                    tint = OverlayPrimaryContainer.copy(alpha = 0.6f),
+                    modifier = Modifier.size(32.dp)
+                )
+            }
+        }
+
+        // ── Ambient bottom glow ──
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(200.dp)
+                .align(Alignment.BottomCenter)
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            Color.Transparent,
+                            OverlayPrimaryContainer.copy(alpha = 0.04f)
+                        )
+                    )
+                )
         )
     }
 }
-    // Entire content of BlockingOverlayContent was replaced above.
 
 /**
  * Custom LifecycleOwner + SavedStateRegistryOwner for Compose views outside of Activities.

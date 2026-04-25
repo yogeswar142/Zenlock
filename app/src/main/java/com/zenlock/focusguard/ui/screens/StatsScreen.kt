@@ -1,26 +1,27 @@
 package com.zenlock.focusguard.ui.screens
 
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.zenlock.focusguard.data.db.entity.FocusSessionEntity
@@ -31,7 +32,10 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 /**
- * Statistics screen with charts showing focus time data over days, weeks, and months.
+ * Focus Analytics screen – Zenlock "Digital Sanctuary" design.
+ *
+ * Large "Focus Analytics" headline, weekly bar chart glass card,
+ * secondary insight cards with progress bars, and session breakdown bento.
  */
 @Composable
 fun StatsScreen(viewModel: MainViewModel) {
@@ -43,289 +47,423 @@ fun StatsScreen(viewModel: MainViewModel) {
     val weeklyChartData by viewModel.weeklyChartData.collectAsState()
     val recentSessions by viewModel.allSessions.collectAsState()
 
-    var selectedTab by remember { mutableIntStateOf(0) }
-
     LaunchedEffect(Unit) {
         viewModel.loadStatistics()
     }
 
+    val totalHours = weeklyFocusTime / 3600f
+    val goalHours = 40f
+    val completionPercent = ((totalHours / goalHours) * 100).coerceAtMost(100f)
+    val avgSessionMinutes = if (weeklySessionCount > 0) {
+        (weeklyFocusTime / 60) / weeklySessionCount
+    } else 0L
+
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .padding(horizontal = 20.dp, vertical = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+            .background(ZenBackground)
+            .padding(horizontal = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+        contentPadding = PaddingValues(top = 12.dp, bottom = 24.dp)
     ) {
+        // ── Hero Header ──
         item {
-            // Header
-            Text(
-                text = "📊 Statistics",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                color = Color.White
-            )
+            Column {
+                Text(
+                    text = "Focus\nAnalytics",
+                    style = MaterialTheme.typography.displayMedium,
+                    color = ZenOnSurface,
+                    fontWeight = FontWeight.Bold,
+                    lineHeight = 48.sp
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "A deep dive into your concentration cycles and cognitive performance over the last period.",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = ZenOnSurfaceVariant,
+                    lineHeight = 26.sp
+                )
+            }
         }
 
-        // Time period tabs
+        // ── Main Chart Card ──
         item {
-            TabRow(
-                selectedTabIndex = selectedTab,
-                containerColor = DarkCard,
-                contentColor = Color.White,
-                indicator = {},
-                divider = {}
-            ) {
-                listOf("Today", "Week", "Month").forEachIndexed { index, title ->
-                    Tab(
-                        selected = selectedTab == index,
-                        onClick = { selectedTab = index },
-                        modifier = Modifier
-                            .padding(4.dp)
-                            .background(
-                                if (selectedTab == index) Purple60.copy(alpha = 0.3f)
-                                else Color.Transparent,
-                                RoundedCornerShape(10.dp)
-                            )
+            GlassCard {
+                Column(modifier = Modifier.padding(20.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.Top
                     ) {
-                        Text(
-                            text = title,
-                            modifier = Modifier.padding(vertical = 10.dp),
-                            fontWeight = if (selectedTab == index) FontWeight.Bold else FontWeight.Normal,
-                            color = if (selectedTab == index) Purple60 else TextSecondary
+                        Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
+                            Text(
+                                text = "Daily Focus Time",
+                                style = MaterialTheme.typography.headlineMedium,
+                                color = ZenOnSurface,
+                                fontWeight = FontWeight.SemiBold,
+                                maxLines = 1,
+                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                                fontSize = 20.sp
+                            )
+                            Text(
+                                text = "LAST 7 DAYS",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = ZenOutline,
+                                letterSpacing = 3.sp
+                            )
+                        }
+                        Column(horizontalAlignment = Alignment.End) {
+                            Text(
+                                text = String.format("%.1f hrs", totalHours),
+                                style = MaterialTheme.typography.headlineLarge,
+                                color = ZenPrimaryContainer,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = "Total Focus",
+                                style = MaterialTheme.typography.labelLarge,
+                                color = ZenTertiary
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    // Bar chart
+                    if (weeklyChartData.isNotEmpty()) {
+                        WeeklyBarChart(data = weeklyChartData)
+                    } else {
+                        // Placeholder bars
+                        val placeholderData = listOf(
+                            "Mon" to 60f, "Tue" to 85f, "Wed" to 45f,
+                            "Thu" to 100f, "Fri" to 70f, "Sat" to 30f, "Sun" to 55f
                         )
+                        WeeklyBarChart(data = placeholderData)
                     }
                 }
             }
         }
 
-        // Summary cards
+        // ── Secondary Insight Cards ──
         item {
-            val focusTime = when (selectedTab) {
-                0 -> todayFocusTime
-                1 -> weeklyFocusTime
-                else -> monthlyFocusTime
-            }
-            val sessionCount = when (selectedTab) {
-                0 -> todaySessionCount
-                else -> weeklySessionCount
-            }
-            val avgSessionMinutes = if (sessionCount > 0) {
-                (focusTime / 60) / sessionCount
-            } else 0L
-
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                StatsOverviewCard(
-                    title = "Focus Time",
-                    value = TimeUtils.formatDuration(focusTime),
-                    icon = "⏱️",
-                    color = Cyan,
-                    modifier = Modifier.weight(1f)
-                )
-                StatsOverviewCard(
-                    title = "Sessions",
-                    value = sessionCount.toString(),
-                    icon = "🎯",
-                    color = Purple60,
-                    modifier = Modifier.weight(1f)
-                )
-                StatsOverviewCard(
-                    title = "Avg Session",
-                    value = "${avgSessionMinutes}m",
-                    icon = "📈",
-                    color = Emerald,
-                    modifier = Modifier.weight(1f)
-                )
-            }
-        }
-
-        // Weekly bar chart
-        item {
-            if (weeklyChartData.isNotEmpty()) {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = DarkCard)
-                ) {
+                // Weekly Trend
+                GlassCard(modifier = Modifier.weight(1f)) {
                     Column(modifier = Modifier.padding(16.dp)) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Icon(
+                                Icons.Outlined.TrendingUp,
+                                contentDescription = null,
+                                tint = ZenPrimaryContainer,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Text(
+                                text = "Weekly Trend",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = ZenOnSurface,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+
                         Text(
-                            text = "Weekly Focus Time",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = "Minutes per day",
+                            text = buildAnnotatedString {
+                                append("Your productivity increased by ")
+                                withStyle(SpanStyle(color = ZenPrimaryContainer, fontWeight = FontWeight.Bold)) {
+                                    append("+12%")
+                                }
+                                append(" compared to last week.")
+                            },
                             style = MaterialTheme.typography.bodySmall,
-                            color = TextMuted
+                            color = ZenOnSurfaceVariant
                         )
+
                         Spacer(modifier = Modifier.height(16.dp))
 
-                        WeeklyBarChart(
-                            data = weeklyChartData,
+                        // Progress bar
+                        LinearProgressIndicator(
+                            progress = { completionPercent / 100f },
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(180.dp)
+                                .height(4.dp)
+                                .clip(RoundedCornerShape(50)),
+                            color = ZenPrimaryContainer,
+                            trackColor = ZenSurfaceContainer,
                         )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Goal: ${goalHours.toInt()}h",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = ZenOutline,
+                                maxLines = 1,
+                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f, fill = false)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "${completionPercent.toInt()}%",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = ZenOnSurface,
+                                maxLines = 1
+                            )
+                        }
+                    }
+                }
+
+                // Average Session
+                GlassCard(modifier = Modifier.weight(1f)) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Icon(
+                                Icons.Outlined.Timer,
+                                contentDescription = null,
+                                tint = ZenPrimaryContainer,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Text(
+                                text = "Average Session",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = ZenOnSurface,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Text(
+                            text = buildAnnotatedString {
+                                append("You typically maintain peak focus for stretches of ")
+                                withStyle(SpanStyle(color = ZenPrimaryContainer, fontWeight = FontWeight.Bold)) {
+                                    append("${avgSessionMinutes} minutes")
+                                }
+                                append(".")
+                            },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = ZenOnSurfaceVariant
+                        )
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            modifier = Modifier.horizontalScroll(rememberScrollState())
+                        ) {
+                            ChipTag("Deep Work")
+                            ChipTag("Consistency")
+                        }
                     }
                 }
             }
         }
 
-        // Recent sessions
+        // ── Session Breakdown ──
         item {
             Text(
-                text = "Recent Sessions",
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold,
-                color = Color.White
+                text = "Session Breakdown",
+                style = MaterialTheme.typography.headlineMedium,
+                color = ZenOnSurface,
+                fontWeight = FontWeight.SemiBold
             )
         }
 
-        if (recentSessions.isEmpty()) {
-            item {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 32.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("📋", fontSize = 36.sp)
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                // Peak performance card (2/3 width)
+                GlassCard(modifier = Modifier.weight(2f).height(160.dp)) {
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        // Gradient decoration
+                        Box(
+                            modifier = Modifier
+                                .fillMaxHeight()
+                                .fillMaxWidth(0.5f)
+                                .align(Alignment.CenterEnd)
+                                .background(
+                                    Brush.horizontalGradient(
+                                        colors = listOf(
+                                            Color.Transparent,
+                                            ZenPrimaryContainer.copy(alpha = 0.15f)
+                                        )
+                                    )
+                                )
+                        )
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(16.dp),
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Text(
+                                text = "PEAK PERFORMANCE",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = ZenPrimaryContainer,
+                                letterSpacing = 2.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = "Most productive at 10:00 AM",
+                                style = MaterialTheme.typography.headlineMedium,
+                                color = ZenOnSurface,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "Schedule your hardest tasks during this window.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = ZenOnSurfaceVariant
+                            )
+                        }
+                    }
+                }
+
+                // Flow states card (1/3 width)
+                GlassCard(modifier = Modifier.weight(1f).height(160.dp)) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Icon(
+                            Icons.Default.Bolt,
+                            contentDescription = null,
+                            tint = ZenPrimaryContainer,
+                            modifier = Modifier.size(36.dp)
+                        )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "No sessions yet",
-                            color = TextSecondary
+                            text = "${todaySessionCount}",
+                            style = MaterialTheme.typography.headlineMedium,
+                            color = ZenOnSurface,
+                            fontWeight = FontWeight.Bold
                         )
                         Text(
-                            text = "Start your first focus session!",
-                            color = TextMuted,
-                            fontSize = 12.sp
+                            text = "Flow States Achieved",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = ZenOutline,
+                            textAlign = TextAlign.Center
                         )
                     }
                 }
             }
-        } else {
-            items(recentSessions.take(20)) { session ->
+        }
+
+        // ── Recent Sessions ──
+        if (recentSessions.isNotEmpty()) {
+            item {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Recent Sessions",
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = ZenOnSurface,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+
+            items(recentSessions.take(10)) { session ->
                 SessionHistoryItem(session = session)
             }
         }
     }
 }
 
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// Sub-components
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+/** Glass card with #1F2937 bg, soft shadow, subtle white border */
 @Composable
-private fun StatsOverviewCard(
-    title: String,
-    value: String,
-    icon: String,
-    color: Color,
-    modifier: Modifier = Modifier
+private fun GlassCard(
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit
 ) {
     Card(
         modifier = modifier,
-        shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = DarkCard)
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = ZenCard),
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.08f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(14.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(icon, fontSize = 20.sp)
-            Spacer(modifier = Modifier.height(6.dp))
-            Text(
-                text = value,
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold,
-                color = color
-            )
-            Spacer(modifier = Modifier.height(2.dp))
-            Text(
-                text = title,
-                fontSize = 11.sp,
-                color = TextMuted,
-                textAlign = TextAlign.Center
-            )
-        }
+        content()
     }
 }
 
-/**
- * Custom bar chart for weekly focus time visualization.
- */
+@Composable
+private fun ChipTag(label: String) {
+    Surface(
+        shape = RoundedCornerShape(50),
+        color = ZenSurfaceContainer
+    ) {
+        Text(
+            text = label,
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+            style = MaterialTheme.typography.labelSmall,
+            color = ZenTertiary,
+            maxLines = 1,
+            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+        )
+    }
+}
+
 @Composable
 private fun WeeklyBarChart(
     data: List<Pair<String, Float>>,
-    modifier: Modifier = Modifier
 ) {
-    val maxValue = data.maxOfOrNull { it.second } ?: 1f
-    val normalizedMax = if (maxValue > 0f) maxValue else 1f
+    val maxValue = data.maxOfOrNull { it.second }?.coerceAtLeast(1f) ?: 1f
+    // Find the day with max value to highlight
+    val maxDay = data.maxByOrNull { it.second }?.first
 
-    Column(modifier = modifier) {
-        // Bars
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.Bottom
-        ) {
-            data.forEach { (day, value) ->
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Bottom,
-                    modifier = Modifier.weight(1f)
-                ) {
-                    // Value label
-                    if (value > 0) {
-                        Text(
-                            text = "${value.toInt()}",
-                            fontSize = 10.sp,
-                            color = TextMuted,
-                            fontWeight = FontWeight.Medium
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(160.dp),
+        horizontalArrangement = Arrangement.SpaceEvenly,
+        verticalAlignment = Alignment.Bottom
+    ) {
+        data.forEach { (day, value) ->
+            val barFraction = (value / maxValue).coerceIn(0.04f, 1f)
+            val isHighlighted = day == maxDay && value > 0
+
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Bottom,
+                modifier = Modifier.weight(1f)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(0.6f)
+                        .fillMaxHeight(barFraction)
+                        .clip(RoundedCornerShape(topStart = 6.dp, topEnd = 6.dp))
+                        .background(
+                            if (isHighlighted) ZenPrimaryContainer
+                            else ZenPrimaryContainer.copy(alpha = 0.2f)
                         )
-                        Spacer(modifier = Modifier.height(4.dp))
-                    }
+                )
 
-                    // Bar
-                    val barHeight = if (normalizedMax > 0f) {
-                        (value / normalizedMax).coerceIn(0.02f, 1f)
-                    } else 0.02f
+                Spacer(modifier = Modifier.height(8.dp))
 
-                    Box(
-                        modifier = Modifier
-                            .width(28.dp)
-                            .fillMaxHeight(barHeight)
-                            .background(
-                                brush = Brush.verticalGradient(
-                                    colors = if (value > 0) listOf(Cyan, Purple60)
-                                    else listOf(DarkSurfaceVariant, DarkSurfaceVariant)
-                                ),
-                                shape = RoundedCornerShape(topStart = 6.dp, topEnd = 6.dp)
-                            )
-                    )
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        // Day labels
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly
-        ) {
-            data.forEach { (day, _) ->
                 Text(
                     text = day,
-                    fontSize = 11.sp,
-                    color = TextMuted,
-                    fontWeight = FontWeight.Medium,
-                    modifier = Modifier.weight(1f),
-                    textAlign = TextAlign.Center
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (isHighlighted) ZenPrimaryContainer else ZenOutline,
+                    fontWeight = if (isHighlighted) FontWeight.Bold else FontWeight.Normal
                 )
             }
         }
@@ -338,25 +476,20 @@ private fun SessionHistoryItem(session: FocusSessionEntity) {
     val dateStr = dateFormat.format(Date(session.startTime))
     val durationStr = TimeUtils.formatDuration(session.actualDurationSeconds)
 
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = DarkCard)
-    ) {
+    GlassCard {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(14.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Status icon
             Box(
                 modifier = Modifier
                     .size(40.dp)
                     .background(
-                        color = if (session.isCompleted) Emerald.copy(alpha = 0.15f)
-                        else Coral.copy(alpha = 0.15f),
-                        shape = RoundedCornerShape(10.dp)
+                        color = if (session.isCompleted) Emerald.copy(alpha = 0.12f)
+                        else Coral.copy(alpha = 0.12f),
+                        shape = RoundedCornerShape(12.dp)
                     ),
                 contentAlignment = Alignment.Center
             ) {
@@ -375,12 +508,12 @@ private fun SessionHistoryItem(session: FocusSessionEntity) {
                 Text(
                     text = if (session.isCompleted) "Completed" else "Stopped Early",
                     fontWeight = FontWeight.SemiBold,
-                    color = Color.White,
+                    color = ZenOnSurface,
                     fontSize = 14.sp
                 )
                 Text(
                     text = dateStr,
-                    color = TextMuted,
+                    color = ZenOutline,
                     fontSize = 12.sp
                 )
             }
@@ -389,7 +522,7 @@ private fun SessionHistoryItem(session: FocusSessionEntity) {
                 Text(
                     text = durationStr,
                     fontWeight = FontWeight.Bold,
-                    color = if (session.isCompleted) Cyan else TextSecondary,
+                    color = if (session.isCompleted) ZenPrimaryContainer else ZenOnSurfaceVariant,
                     fontSize = 14.sp
                 )
                 if (session.blockedAttempts > 0) {

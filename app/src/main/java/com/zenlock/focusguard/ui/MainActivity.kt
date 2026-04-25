@@ -16,7 +16,11 @@ import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -25,7 +29,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.zenlock.focusguard.ui.screens.*
-import com.zenlock.focusguard.ui.theme.FocusGuardTheme
+import com.zenlock.focusguard.ui.theme.*
 import com.zenlock.focusguard.ui.viewmodel.MainViewModel
 import com.zenlock.focusguard.util.PermissionUtils
 
@@ -90,11 +94,12 @@ fun FocusGuardApp() {
     }
 
     Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
+        containerColor = ZenBackground,
         bottomBar = {
             NavigationBar(
-                containerColor = MaterialTheme.colorScheme.surface,
-                contentColor = MaterialTheme.colorScheme.onSurface
+                containerColor = Color(0xE6020510), // slate-950/90
+                contentColor = ZenOnSurface,
+                tonalElevation = 0.dp
             ) {
                 bottomNavItems.forEach { screen ->
                     val selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true
@@ -106,7 +111,15 @@ fun FocusGuardApp() {
                                 contentDescription = screen.title
                             )
                         },
-                        label = { Text(screen.title) },
+                        label = {
+                            Text(
+                                text = screen.title,
+                                fontSize = 10.sp,
+                                fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                                letterSpacing = 0.5.sp,
+                                fontFamily = Manrope
+                            )
+                        },
                         selected = selected,
                         onClick = {
                             navController.navigate(screen.route) {
@@ -118,11 +131,11 @@ fun FocusGuardApp() {
                             }
                         },
                         colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = MaterialTheme.colorScheme.primary,
-                            selectedTextColor = MaterialTheme.colorScheme.primary,
-                            indicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
-                            unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                            unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+                            selectedIconColor = ZenPrimaryContainer,
+                            selectedTextColor = ZenPrimaryContainer,
+                            indicatorColor = Color.Transparent,
+                            unselectedIconColor = ZenOutline,
+                            unselectedTextColor = ZenOutline
                         )
                     )
                 }
