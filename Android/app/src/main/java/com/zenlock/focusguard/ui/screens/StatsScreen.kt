@@ -78,7 +78,7 @@ fun StatsScreen(viewModel: MainViewModel) {
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "A deep dive into your concentration cycles and cognitive performance over the last period.",
+                    text = "Overview of your recent focus and productivity.",
                     style = MaterialTheme.typography.bodyLarge,
                     color = ZenOnSurfaceVariant,
                     lineHeight = 26.sp
@@ -133,10 +133,10 @@ fun StatsScreen(viewModel: MainViewModel) {
                     if (weeklyChartData.isNotEmpty()) {
                         WeeklyBarChart(data = weeklyChartData)
                     } else {
-                        // Placeholder bars
+                        // Placeholder bars (zeroed out to prevent showing fake data)
                         val placeholderData = listOf(
-                            "Mon" to 60f, "Tue" to 85f, "Wed" to 45f,
-                            "Thu" to 100f, "Fri" to 70f, "Sat" to 30f, "Sun" to 55f
+                            "Mon" to 0f, "Tue" to 0f, "Wed" to 0f,
+                            "Thu" to 0f, "Fri" to 0f, "Sat" to 0f, "Sun" to 0f
                         )
                         WeeklyBarChart(data = placeholderData)
                     }
@@ -173,13 +173,7 @@ fun StatsScreen(viewModel: MainViewModel) {
                         Spacer(modifier = Modifier.height(8.dp))
 
                         Text(
-                            text = buildAnnotatedString {
-                                append("Your productivity increased by ")
-                                withStyle(SpanStyle(color = ZenPrimaryContainer, fontWeight = FontWeight.Bold)) {
-                                    append("+12%")
-                                }
-                                append(" compared to last week.")
-                            },
+                            text = "Keep up the good work and maintain your focus streak!",
                             style = MaterialTheme.typography.bodySmall,
                             color = ZenOnSurfaceVariant
                         )
@@ -244,13 +238,7 @@ fun StatsScreen(viewModel: MainViewModel) {
                         Spacer(modifier = Modifier.height(8.dp))
 
                         Text(
-                            text = buildAnnotatedString {
-                                append("You typically maintain peak focus for stretches of ")
-                                withStyle(SpanStyle(color = ZenPrimaryContainer, fontWeight = FontWeight.Bold)) {
-                                    append("${avgSessionMinutes} minutes")
-                                }
-                                append(".")
-                            },
+                            text = "Your average session lasts ${avgSessionMinutes} minutes.",
                             style = MaterialTheme.typography.bodySmall,
                             color = ZenOnSurfaceVariant
                         )
@@ -317,14 +305,14 @@ fun StatsScreen(viewModel: MainViewModel) {
                             )
                             Spacer(modifier = Modifier.height(6.dp))
                             Text(
-                                text = "Most productive at 10:00 AM",
+                                text = "Consistent Focus",
                                 style = MaterialTheme.typography.headlineMedium,
                                 color = ZenOnSurface,
                                 fontWeight = FontWeight.SemiBold
                             )
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = "Schedule your hardest tasks during this window.",
+                                text = "Keep pushing your limits to reach your goals.",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = ZenOnSurfaceVariant
                             )

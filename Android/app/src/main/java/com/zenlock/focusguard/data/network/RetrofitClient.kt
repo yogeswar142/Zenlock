@@ -9,7 +9,7 @@ import java.util.concurrent.TimeUnit
 object RetrofitClient {
     // For Android Emulator: use 10.0.2.2
     // For Physical Device: use your computer's local IP address
-    private const val BASE_URL = "http://192.168.1.9:5000/api/"
+    private const val BASE_URL = "https://zenlock.onrender.com/api/"
 
     private val loggingInterceptor = HttpLoggingInterceptor().apply {
         level = HttpLoggingInterceptor.Level.BODY

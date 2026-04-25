@@ -298,7 +298,8 @@ fun FocusGuardApp(
             }
             composable(Screen.Profile.route) {
                 ProfileScreen(
-                    viewModel = authViewModel,
+                    authViewModel = authViewModel,
+                    mainViewModel = viewModel,
                     onNavigateBack = { navController.popBackStack() },
                     onLogout = {
                         navController.navigate(Screen.SignIn.route) {

@@ -26,18 +26,24 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.zenlock.focusguard.ui.theme.*
 import com.zenlock.focusguard.ui.viewmodel.AuthViewModel
+import com.zenlock.focusguard.ui.viewmodel.MainViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
-    viewModel: AuthViewModel,
+    authViewModel: AuthViewModel,
+    mainViewModel: MainViewModel,
     onNavigateBack: () -> Unit,
     onLogout: () -> Unit
 ) {
-    val userProfile by viewModel.userProfile.collectAsState()
+    val userProfile by authViewModel.userProfile.collectAsState()
+    val monthlyFocusTime by mainViewModel.monthlyFocusTime.collectAsState()
+    val userStreak by mainViewModel.userStreak.collectAsState()
+    val blockedAttempts by mainViewModel.todayBlockedAttempts.collectAsState()
 
     LaunchedEffect(Unit) {
-        viewModel.loadProfile()
+        authViewModel.loadProfile()
+        mainViewModel.loadStatistics()
     }
 
     Scaffold(
@@ -229,6 +235,9 @@ fun ProfileScreen(
                 Spacer(modifier = Modifier.height(24.dp))
 
                 // ── Stats Row ──
+                val focusHours = monthlyFocusTime / 3600
+                val focusMinutes = (monthlyFocusTime % 3600) / 60
+                
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -237,21 +246,21 @@ fun ProfileScreen(
                 ) {
                     ProfileStatCard(
                         icon = Icons.Outlined.Timer,
-                        value = "24h\n15m",
-                        label = "Total\nFocus",
+                        value = "${focusHours}h\n${focusMinutes}m",
+                        label = "Monthly\nFocus",
                         color = ZenPrimaryContainer,
                         modifier = Modifier.weight(1f)
                     )
                     ProfileStatCard(
                         icon = Icons.Outlined.LocalFireDepartment,
-                        value = "12\nDays",
+                        value = "${userStreak}\nDays",
                         label = "Streak",
                         color = Amber,
                         modifier = Modifier.weight(1f)
                     )
                     ProfileStatCard(
                         icon = Icons.Outlined.Block,
-                        value = "42",
+                        value = blockedAttempts.toString(),
                         label = "Apps\nBlocked",
                         color = Coral,
                         modifier = Modifier.weight(1f)
@@ -317,7 +326,7 @@ fun ProfileScreen(
 
                 // ── Logout Button ──
                 OutlinedButton(
-                    onClick = { viewModel.logout(onLogout) },
+                    onClick = { authViewModel.logout(onLogout) },
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 24.dp)
