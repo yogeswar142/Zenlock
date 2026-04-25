@@ -24,7 +24,7 @@ Backend/.env
 captures/
 
 # Assets & Design
-assets/
+# (assets/ is no longer ignored globally so screenshots can be tracked)
 client_secret_*.json
 Backend/client_secret_*.json
 
