@@ -1,4 +1,4 @@
-# 🛡️ FocusGuard (Zenlock)
+# 🛡️ Zenlock
 
 A powerful, privacy-first Android application designed to help you reclaim your time and stay focused by blocking distracting apps and automatically filtering out unproductive YouTube content.
 
