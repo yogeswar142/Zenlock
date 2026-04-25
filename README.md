@@ -2,6 +2,16 @@
 
 A powerful, privacy-first Android application designed to help you reclaim your time and stay focused by blocking distracting apps and automatically filtering out unproductive YouTube content.
 
+## 📸 Screenshots
+
+<p align="center">
+  <img src="assets/screenshots/01_app_screen.jpg" width="18%" />
+  <img src="assets/screenshots/02_app_screen.jpg" width="18%" />
+  <img src="assets/screenshots/03_app_screen.jpg" width="18%" />
+  <img src="assets/screenshots/04_app_screen.jpg" width="18%" />
+  <img src="assets/screenshots/05_app_screen.jpg" width="18%" />
+</p>
+
 ## ✨ Core Features
 
 ### 🚀 App Blocking Engine
