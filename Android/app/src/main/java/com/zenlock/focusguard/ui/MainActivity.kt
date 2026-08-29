@@ -145,9 +145,18 @@ fun FocusGuardApp(
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
-    // Refresh permissions when app becomes visible
-    LaunchedEffect(Unit) {
-        viewModel.refreshPermissions()
+    // Refresh permissions reactively every time app becomes visible (e.g. returning from Settings)
+    val lifecycleOwner = androidx.compose.ui.platform.LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                viewModel.refreshPermissions()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
     }
 
     val showBottomBar = currentRoute in bottomNavItems.map { it.route }

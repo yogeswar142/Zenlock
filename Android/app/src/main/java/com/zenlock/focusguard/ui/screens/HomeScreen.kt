@@ -70,9 +70,18 @@ fun HomeScreen(viewModel: MainViewModel) {
     )
     val quote = remember { quotes.random() }
 
-    LaunchedEffect(Unit) {
-        viewModel.refreshPermissions()
-        viewModel.loadStatistics()
+    val lifecycleOwner = androidx.compose.ui.platform.LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                viewModel.refreshPermissions()
+                viewModel.loadStatistics()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
     }
 
     val allPermissionsGranted = hasUsageStats && hasOverlay && hasAccessibility

@@ -43,21 +43,52 @@ object PermissionUtils {
      * Reads the system accessibility settings to find our service.
      */
     fun isAccessibilityServiceEnabled(context: Context): Boolean {
-        val serviceName = "${context.packageName}/.service.accessibility.FocusGuardAccessibilityService"
+        val expectedLongName = android.content.ComponentName(
+            context,
+            com.zenlock.focusguard.service.accessibility.FocusGuardAccessibilityService::class.java
+        ).flattenToString()
+        val expectedShortName = android.content.ComponentName(
+            context,
+            com.zenlock.focusguard.service.accessibility.FocusGuardAccessibilityService::class.java
+        ).flattenToShortString()
+        val rawShortName = "${context.packageName}/.service.accessibility.FocusGuardAccessibilityService"
+
         val enabledServices = Settings.Secure.getString(
             context.contentResolver,
             Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
-        ) ?: return false
+        )
 
-        val colonSplitter = TextUtils.SimpleStringSplitter(':')
-        colonSplitter.setString(enabledServices)
+        if (!enabledServices.isNullOrEmpty()) {
+            val colonSplitter = TextUtils.SimpleStringSplitter(':')
+            colonSplitter.setString(enabledServices)
 
-        while (colonSplitter.hasNext()) {
-            val componentName = colonSplitter.next()
-            if (componentName.equals(serviceName, ignoreCase = true)) {
-                return true
+            while (colonSplitter.hasNext()) {
+                val componentName = colonSplitter.next()
+                if (componentName.equals(expectedLongName, ignoreCase = true) ||
+                    componentName.equals(expectedShortName, ignoreCase = true) ||
+                    componentName.equals(rawShortName, ignoreCase = true)) {
+                    return true
+                }
             }
         }
+
+        // Secondary verification using AccessibilityManager API
+        try {
+            val am = context.getSystemService(Context.ACCESSIBILITY_SERVICE) as? android.view.accessibility.AccessibilityManager
+            val enabledList = am?.getEnabledAccessibilityServiceList(android.accessibilityservice.AccessibilityServiceInfo.FEEDBACK_GENERIC or -1)
+            if (enabledList != null) {
+                for (service in enabledList) {
+                    val serviceId = service.id
+                    if (serviceId.contains(context.packageName, ignoreCase = true) &&
+                        serviceId.contains("FocusGuardAccessibilityService", ignoreCase = true)) {
+                        return true
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            // Ignore failure
+        }
+
         return false
     }
 
