@@ -1,8 +1,7 @@
-name = "zenlock-backend"
+name = "zenlock"
 main = "src/index.js"
 compatibility_date = "2024-09-23"
 compatibility_flags = ["nodejs_compat"]
 
 [vars]
-# You can set secrets either in Cloudflare Dashboard -> Settings -> Variables,
-# or via command line using: npx wrangler secret put MONGODB_URI
+# Environment variables will be read from Cloudflare Dashboard / Wrangler secrets

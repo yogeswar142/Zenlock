@@ -1,11 +1,11 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 let isConnected = false;
 
 /**
  * Connect to MongoDB and cache the connection instance across Cloudflare Worker invocations.
  */
-async function connectToDatabase(uri) {
+export async function connectToDatabase(uri) {
     if (isConnected && mongoose.connection.readyState === 1) {
         return;
     }
@@ -14,7 +14,6 @@ async function connectToDatabase(uri) {
         throw new Error('MONGODB_URI environment variable is not defined.');
     }
 
-    // Set bufferCommands to false for serverless environments
     await mongoose.connect(uri, {
         bufferCommands: false,
         serverSelectionTimeoutMS: 5000,
@@ -22,5 +21,3 @@ async function connectToDatabase(uri) {
 
     isConnected = true;
 }
-
-module.exports = { connectToDatabase };

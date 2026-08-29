@@ -1,17 +1,17 @@
-const { Hono } = require('hono');
-const { cors } = require('hono/cors');
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-const { OAuth2Client } = require('google-auth-library');
-const { connectToDatabase } = require('./db');
-const User = require('../models/User');
+import { Hono } from 'hono';
+import { cors } from 'hono/cors';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+import { OAuth2Client } from 'google-auth-library';
+import { connectToDatabase } from './db.js';
+import User from '../models/User.js';
 
 const app = new Hono();
 
 // Global CORS & DB Middleware
 app.use('*', cors());
 app.use('*', async (c, next) => {
-    const mongoUri = c.env?.MONGODB_URI || process.env.MONGODB_URI;
+    const mongoUri = c.env?.MONGODB_URI || process.env?.MONGODB_URI;
     if (mongoUri) {
         try {
             await connectToDatabase(mongoUri);
@@ -52,7 +52,7 @@ const authMiddleware = async (c, next) => {
     }
 
     try {
-        const secret = c.env?.JWT_SECRET || process.env.JWT_SECRET;
+        const secret = c.env?.JWT_SECRET || process.env?.JWT_SECRET;
         const decoded = jwt.verify(token, secret);
         c.set('user', decoded);
         await next();
@@ -83,7 +83,7 @@ app.post('/api/auth/google', async (c) => {
             return c.json({ error: 'Google ID token is required' }, 400);
         }
 
-        const clientId = c.env?.GOOGLE_CLIENT_ID || process.env.GOOGLE_CLIENT_ID;
+        const clientId = c.env?.GOOGLE_CLIENT_ID || process.env?.GOOGLE_CLIENT_ID;
         const client = new OAuth2Client();
         const ticket = await client.verifyIdToken({
             idToken: idToken,
@@ -94,7 +94,7 @@ app.post('/api/auth/google', async (c) => {
         const googleId = payload.sub;
 
         let user = await User.findOne({ email });
-        const jwtSecret = c.env?.JWT_SECRET || process.env.JWT_SECRET;
+        const jwtSecret = c.env?.JWT_SECRET || process.env?.JWT_SECRET;
 
         if (user) {
             if (!user.googleId) {
@@ -148,7 +148,7 @@ app.post('/api/auth/signup', async (c) => {
         user = new User({ email, password: hashedPassword });
         await user.save();
 
-        const jwtSecret = c.env?.JWT_SECRET || process.env.JWT_SECRET;
+        const jwtSecret = c.env?.JWT_SECRET || process.env?.JWT_SECRET;
         const token = generateToken(user, jwtSecret);
 
         return c.json({
@@ -189,7 +189,7 @@ app.post('/api/auth/login', async (c) => {
             return c.json({ error: 'Invalid credentials' }, 400);
         }
 
-        const jwtSecret = c.env?.JWT_SECRET || process.env.JWT_SECRET;
+        const jwtSecret = c.env?.JWT_SECRET || process.env?.JWT_SECRET;
         const token = generateToken(user, jwtSecret);
 
         return c.json({
@@ -321,4 +321,4 @@ app.delete('/api/auth/account', authMiddleware, async (c) => {
     }
 });
 
-module.exports = app;
+export default app;
