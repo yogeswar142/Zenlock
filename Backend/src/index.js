@@ -52,7 +52,7 @@ const authMiddleware = async (c, next) => {
     }
 
     try {
-        const secret = c.env?.JWT_SECRET || process.env?.JWT_SECRET;
+        const secret = c.env?.JWT_SECRET || process.env?.JWT_SECRET || 'zenlock_default_jwt_secret_2026';
         const decoded = jwt.verify(token, secret);
         c.set('user', decoded);
         await next();
@@ -83,18 +83,22 @@ app.post('/api/auth/google', async (c) => {
             return c.json({ error: 'Google ID token is required' }, 400);
         }
 
-        const clientId = c.env?.GOOGLE_CLIENT_ID || process.env?.GOOGLE_CLIENT_ID;
+        const defaultClientId = '353072970313-tcraq65nli52cj8tkgldoqeq0vknq0q2.apps.googleusercontent.com';
+        const clientId = c.env?.GOOGLE_CLIENT_ID || process.env?.GOOGLE_CLIENT_ID || defaultClientId;
         const client = new OAuth2Client();
-        const ticket = await client.verifyIdToken({
-            idToken: idToken,
-            audience: clientId,
-        });
+        
+        const verifyOptions = { idToken };
+        if (clientId) {
+            verifyOptions.audience = clientId;
+        }
+
+        const ticket = await client.verifyIdToken(verifyOptions);
         const payload = ticket.getPayload();
         const email = payload.email;
         const googleId = payload.sub;
 
         let user = await User.findOne({ email });
-        const jwtSecret = c.env?.JWT_SECRET || process.env?.JWT_SECRET;
+        const jwtSecret = c.env?.JWT_SECRET || process.env?.JWT_SECRET || 'zenlock_default_jwt_secret_2026';
 
         if (user) {
             if (!user.googleId) {
@@ -148,7 +152,7 @@ app.post('/api/auth/signup', async (c) => {
         user = new User({ email, password: hashedPassword });
         await user.save();
 
-        const jwtSecret = c.env?.JWT_SECRET || process.env?.JWT_SECRET;
+        const jwtSecret = c.env?.JWT_SECRET || process.env?.JWT_SECRET || 'zenlock_default_jwt_secret_2026';
         const token = generateToken(user, jwtSecret);
 
         return c.json({
@@ -189,7 +193,7 @@ app.post('/api/auth/login', async (c) => {
             return c.json({ error: 'Invalid credentials' }, 400);
         }
 
-        const jwtSecret = c.env?.JWT_SECRET || process.env?.JWT_SECRET;
+        const jwtSecret = c.env?.JWT_SECRET || process.env?.JWT_SECRET || 'zenlock_default_jwt_secret_2026';
         const token = generateToken(user, jwtSecret);
 
         return c.json({
