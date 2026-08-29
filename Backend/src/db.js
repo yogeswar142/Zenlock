@@ -11,12 +11,11 @@ export async function connectToDatabase(uri) {
     }
 
     if (!uri) {
-        throw new Error('MONGODB_URI environment variable is not defined.');
+        throw new Error('MONGODB_URI environment secret is not defined in Cloudflare Workers.');
     }
 
     await mongoose.connect(uri, {
-        bufferCommands: false,
-        serverSelectionTimeoutMS: 5000,
+        serverSelectionTimeoutMS: 10000,
     });
 
     isConnected = true;

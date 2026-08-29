@@ -13,12 +13,16 @@ const app = new Hono();
 app.use('*', cors());
 app.use('*', async (c, next) => {
     const mongoUri = c.env?.MONGODB_URI || process.env?.MONGODB_URI;
-    if (mongoUri) {
-        try {
-            await connectToDatabase(mongoUri);
-        } catch (err) {
-            console.error('Database connection failed:', err.message);
-        }
+    if (!mongoUri) {
+        return c.json({
+            error: "MONGODB_URI environment secret is missing in Cloudflare Workers. Please add MONGODB_URI in Cloudflare Dashboard -> Workers & Pages -> zenlock -> Settings -> Variables & Secrets."
+        }, 500);
+    }
+    try {
+        await connectToDatabase(mongoUri);
+    } catch (err) {
+        console.error('Database connection failed:', err.message);
+        return c.json({ error: `Database connection error: ${err.message}` }, 500);
     }
     await next();
 });
