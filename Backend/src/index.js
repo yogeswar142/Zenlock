@@ -12,12 +12,13 @@ const app = new Hono();
 // Global CORS & DB Middleware
 app.use('*', cors());
 app.use('*', async (c, next) => {
-    const defaultMongoUri = 'mongodb+srv://alphayg:yogialpha12345@kabaddi.24psl.mongodb.net/zenlock?retryWrites=true&w=majority';
-    const mongoUri = c.env?.MONGODB_URI || process.env?.MONGODB_URI || defaultMongoUri;
-    try {
-        await connectToDatabase(mongoUri);
-    } catch (err) {
-        console.error('Database connection failed:', err.message);
+    const mongoUri = c.env?.MONGODB_URI || process.env?.MONGODB_URI;
+    if (mongoUri) {
+        try {
+            await connectToDatabase(mongoUri);
+        } catch (err) {
+            console.error('Database connection failed:', err.message);
+        }
     }
     await next();
 });

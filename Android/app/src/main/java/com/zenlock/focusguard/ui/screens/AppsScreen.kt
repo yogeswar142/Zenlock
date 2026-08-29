@@ -37,7 +37,9 @@ fun AppsScreen(viewModel: MainViewModel) {
     var showAppPicker by remember { mutableStateOf(true) }
 
     LaunchedEffect(Unit) {
-        viewModel.loadInstalledApps()
+        if (installedApps.isEmpty()) {
+            viewModel.loadInstalledApps()
+        }
     }
 
     LazyColumn(
@@ -211,7 +213,7 @@ fun AppsScreen(viewModel: MainViewModel) {
         }
 
         // ── App List Items ──
-        items(installedApps) { appInfo ->
+        items(installedApps, key = { it.packageName }) { appInfo ->
             AppListItem(
                 appName = appInfo.appName,
                 packageName = appInfo.packageName,

@@ -272,7 +272,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     // ===================== BLOCKED APPS ACTIONS =====================
 
     fun loadInstalledApps() {
-        viewModelScope.launch {
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             val pm = getApplication<Application>().packageManager
             val blockedPackages = app.blockedAppRepository.getActiveBlockedAppsList()
                 .map { it.packageName }.toSet()
