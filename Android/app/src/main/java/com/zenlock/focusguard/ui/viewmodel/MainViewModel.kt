@@ -154,8 +154,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun checkAndRecoverSession() {
         viewModelScope.launch {
+            val isFocusActivePref = app.userPreferences.isFocusActive.first()
             val activeSession = app.focusSessionRepository.getActiveSession()
-            if (activeSession != null && !FocusSessionForegroundService.isRunning) {
+            if (activeSession != null && isFocusActivePref && !FocusSessionForegroundService.isRunning) {
                 FocusSessionForegroundService.triggerRecovery(getApplication())
             }
         }

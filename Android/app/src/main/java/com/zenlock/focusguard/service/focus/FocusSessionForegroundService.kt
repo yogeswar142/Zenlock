@@ -136,12 +136,13 @@ class FocusSessionForegroundService : Service() {
         serviceScope.launch {
             try {
                 val app = FocusGuardApp.getInstance()
+                val isFocusActivePref = app.userPreferences.isFocusActive.first()
                 val activeSession = app.focusSessionRepository.getActiveSession()
-                
-                if (activeSession != null) {
+
+                if (activeSession != null && isFocusActivePref) {
                     val expectedEndTime = activeSession.startTime + (activeSession.plannedDurationMinutes * 60 * 1000L)
                     val now = System.currentTimeMillis()
-                    
+
                     if (expectedEndTime > now) {
                         // Session is still active
                         durationMinutes = activeSession.plannedDurationMinutes
@@ -149,10 +150,10 @@ class FocusSessionForegroundService : Service() {
                         totalSeconds = durationMinutes * 60L
                         remainingSeconds = (expectedEndTime - now) / 1000
                         currentSessionId = activeSession.id
-                        
+
                         isRunning = true
                         isPaused = false
-                        
+
                         startForeground(FocusGuardApp.FOCUS_NOTIFICATION_ID, createNotification())
                         startTimer()
                         Log.d(TAG, "Recovered active focus session: ID=$currentSessionId, remaining=${remainingSeconds}s")
@@ -170,6 +171,18 @@ class FocusSessionForegroundService : Service() {
                         stopSelf()
                     }
                 } else {
+                    // Close out any old unclosed database session if user preference is inactive
+                    if (activeSession != null) {
+                        val now = System.currentTimeMillis()
+                        val actualDur = maxOf(1L, (now - activeSession.startTime) / 1000)
+                        app.focusSessionRepository.updateSession(
+                            activeSession.copy(
+                                endTime = now,
+                                actualDurationSeconds = minOf(actualDur, activeSession.plannedDurationMinutes * 60L),
+                                isCompleted = false
+                            )
+                        )
+                    }
                     app.userPreferences.setFocusActive(false)
                     stopForeground(STOP_FOREGROUND_REMOVE)
                     stopSelf()
@@ -271,7 +284,17 @@ class FocusSessionForegroundService : Service() {
         timerJob?.cancel()
 
         val endTime = System.currentTimeMillis()
-        val actualDuration = (endTime - startTime) / 1000
+        val elapsedFromTimer = if (totalSeconds > 0 && remainingSeconds <= totalSeconds) {
+            totalSeconds - remainingSeconds
+        } else {
+            0L
+        }
+        val elapsedFromTime = if (startTime > 0) (endTime - startTime) / 1000 else 0L
+        val actualDuration = if (completed) {
+            totalSeconds.coerceAtLeast(1L)
+        } else {
+            maxOf(1L, maxOf(elapsedFromTimer, elapsedFromTime))
+        }
 
         // Update session in database
         serviceScope.launch {
