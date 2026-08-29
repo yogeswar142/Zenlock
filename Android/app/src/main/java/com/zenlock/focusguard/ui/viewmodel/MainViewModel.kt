@@ -376,7 +376,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     // ===================== STATISTICS =====================
 
     fun loadStatistics() {
-        viewModelScope.launch {
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             val startOfDay = TimeUtils.getStartOfDay()
             val startOfWeek = TimeUtils.getStartOfWeek()
             val startOfMonth = TimeUtils.getStartOfMonth()
@@ -385,8 +385,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             _weeklyFocusTime.value = app.focusSessionRepository.getTotalFocusTimeSince(startOfWeek)
             _monthlyFocusTime.value = app.focusSessionRepository.getTotalFocusTimeSince(startOfMonth)
 
-            _todaySessionCount.value = app.focusSessionRepository.getCompletedSessionCountSince(startOfDay)
-            _weeklySessionCount.value = app.focusSessionRepository.getCompletedSessionCountSince(startOfWeek)
+            _todaySessionCount.value = app.focusSessionRepository.getSessionCountSince(startOfDay)
+            _weeklySessionCount.value = app.focusSessionRepository.getSessionCountSince(startOfWeek)
 
             baseTodayBlockedAttempts = app.focusSessionRepository.getTotalBlockedAttemptsSince(startOfDay)
             _todayBlockedAttempts.value = baseTodayBlockedAttempts + com.zenlock.focusguard.service.accessibility.FocusSessionService.blockedAttemptCount.get()
@@ -398,15 +398,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private suspend fun loadWeeklyChartData() {
         val cal = Calendar.getInstance()
+        cal.firstDayOfWeek = Calendar.MONDAY
         cal.set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
         cal.set(Calendar.HOUR_OF_DAY, 0)
         cal.set(Calendar.MINUTE, 0)
         cal.set(Calendar.SECOND, 0)
         cal.set(Calendar.MILLISECOND, 0)
 
-        if (cal.timeInMillis > System.currentTimeMillis()) {
-            cal.add(Calendar.WEEK_OF_YEAR, -1)
-        }
+        val weekStart = cal.timeInMillis
+        val allWeeklySessions = app.focusSessionRepository.getAllSessionsSince(weekStart)
 
         val chartData = mutableListOf<Pair<String, Float>>()
         val dayNames = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
@@ -416,11 +416,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             cal.add(Calendar.DAY_OF_YEAR, 1)
             val dayEnd = cal.timeInMillis
 
-            val focusTime = app.focusSessionRepository.getTotalFocusTimeSince(dayStart)
-            // Only count time within this specific day
-            val sessions = app.focusSessionRepository.getCompletedSessionsSince(dayStart)
-            val dayFocusMinutes = sessions
-                .filter { it.startTime < dayEnd }
+            val dayFocusMinutes = allWeeklySessions
+                .filter { it.startTime in dayStart until dayEnd }
                 .sumOf { it.actualDurationSeconds } / 60f
 
             chartData.add(dayNames[i] to dayFocusMinutes)

@@ -183,9 +183,12 @@ fun AppsScreen(viewModel: MainViewModel) {
                                 modifier = Modifier.size(24.dp)
                             )
                         }
-                        Spacer(modifier = Modifier.height(8.dp))
+                        val todayFocusTime by viewModel.todayFocusTime.collectAsState()
+                        val timeSavedHours = todayFocusTime / 3600f
+                        val timeSavedText = if (timeSavedHours >= 0.1f) String.format(java.util.Locale.getDefault(), "%.1fh", timeSavedHours) else "${todayFocusTime / 60}m"
+
                         Text(
-                            text = "2.4h",
+                            text = timeSavedText,
                             style = MaterialTheme.typography.headlineMedium,
                             color = ZenOnSurface,
                             fontWeight = FontWeight.Bold

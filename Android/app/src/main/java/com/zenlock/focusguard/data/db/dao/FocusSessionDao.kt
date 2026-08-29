@@ -25,13 +25,19 @@ interface FocusSessionDao {
     @Query("SELECT * FROM focus_sessions WHERE startTime >= :startTime ORDER BY startTime DESC")
     fun getSessionsSince(startTime: Long): Flow<List<FocusSessionEntity>>
 
+    @Query("SELECT * FROM focus_sessions WHERE startTime >= :startTime AND actualDurationSeconds > 0 ORDER BY startTime DESC")
+    suspend fun getAllSessionsSince(startTime: Long): List<FocusSessionEntity>
+
     @Query("SELECT * FROM focus_sessions WHERE startTime >= :startTime AND isCompleted = 1")
     suspend fun getCompletedSessionsSince(startTime: Long): List<FocusSessionEntity>
 
-    @Query("SELECT SUM(actualDurationSeconds) FROM focus_sessions WHERE isCompleted = 1 AND startTime >= :startTime")
+    @Query("SELECT SUM(actualDurationSeconds) FROM focus_sessions WHERE startTime >= :startTime AND actualDurationSeconds > 0")
     suspend fun getTotalFocusTimeSince(startTime: Long): Long?
 
-    @Query("SELECT COUNT(*) FROM focus_sessions WHERE isCompleted = 1 AND startTime >= :startTime")
+    @Query("SELECT COUNT(*) FROM focus_sessions WHERE startTime >= :startTime AND actualDurationSeconds > 0")
+    suspend fun getSessionCountSince(startTime: Long): Int
+
+    @Query("SELECT COUNT(*) FROM focus_sessions WHERE startTime >= :startTime AND isCompleted = 1")
     suspend fun getCompletedSessionCountSince(startTime: Long): Int
 
     @Query("SELECT SUM(blockedAttempts) FROM focus_sessions WHERE startTime >= :startTime")

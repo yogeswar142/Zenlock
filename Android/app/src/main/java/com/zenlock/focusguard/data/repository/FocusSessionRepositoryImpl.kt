@@ -24,11 +24,17 @@ class FocusSessionRepositoryImpl(
     override fun getSessionsSince(startTime: Long): Flow<List<FocusSessionEntity>> =
         dao.getSessionsSince(startTime)
 
+    override suspend fun getAllSessionsSince(startTime: Long): List<FocusSessionEntity> =
+        dao.getAllSessionsSince(startTime)
+
     override suspend fun getCompletedSessionsSince(startTime: Long): List<FocusSessionEntity> =
         dao.getCompletedSessionsSince(startTime)
 
     override suspend fun getTotalFocusTimeSince(startTime: Long): Long =
         dao.getTotalFocusTimeSince(startTime) ?: 0L
+
+    override suspend fun getSessionCountSince(startTime: Long): Int =
+        dao.getSessionCountSince(startTime)
 
     override suspend fun getCompletedSessionCountSince(startTime: Long): Int =
         dao.getCompletedSessionCountSince(startTime)
