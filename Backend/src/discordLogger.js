@@ -1,9 +1,3 @@
-const DEFAULT_WEBHOOK_URL = 'https://discord.com/api/webhooks/1543302154012590180/7geg8JpjGII4EEALJ4V81a8CCSSWEO5HT7p68XzoDiLdN9GEQ1MvOZ96yzBP3dgjIi2D';
-
-/**
- * Sends structured log embeds to Discord Webhook with automatic continuation splitting
- * for long messages exceeding Discord limits.
- */
 export async function sendDiscordLog({
     title,
     description = '',
@@ -11,7 +5,7 @@ export async function sendDiscordLog({
     level = 'info', // 'success', 'info', 'warning', 'error'
     envUrl = null
 }) {
-    const webhookUrl = envUrl || DEFAULT_WEBHOOK_URL;
+    const webhookUrl = envUrl || (typeof process !== 'undefined' && process.env ? process.env.DISCORD_WEBHOOK_URL : null);
     if (!webhookUrl) return;
 
     // Color codes (Decimal)

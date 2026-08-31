@@ -104,14 +104,26 @@ class FocusGuardAccessibilityService : AccessibilityService() {
      * Handle window state changes - detect foreground app switches.
      */
     private fun handleWindowChanged(packageName: String, event: AccessibilityEvent) {
-        // If we switched to a different app, reset overlay state
+        val overlayController = com.zenlock.focusguard.service.overlay.FocusGuardOverlayController.getInstance(this)
+
+        // Ignore system UI overlays (like launcher or status bar) from resetting the current target app
+        if (packageName == "com.android.systemui" || packageName.contains("launcher", ignoreCase = true)) {
+            Log.d(TAG, "System UI / Launcher event detected: $packageName")
+            // Hide overlay when returning to launcher
+            overlayController.hideBlockingOverlay()
+            currentForegroundPackage = packageName
+            isOverlayShownForCurrentApp = false
+            return
+        }
+
+        // If we switched to a different package, update foreground package tracking
         if (packageName != currentForegroundPackage) {
             currentForegroundPackage = packageName
             isOverlayShownForCurrentApp = false
 
-            // Hide overlay when user navigates away from blocked app
-            if (overlayManager.isOverlayShowing()) {
-                overlayManager.hideOverlay()
+            // Hide overlay when user navigates away from a previously blocked app
+            if (overlayController.isOverlayShowing()) {
+                overlayController.hideBlockingOverlay()
             }
         }
 
@@ -120,15 +132,23 @@ class FocusGuardAccessibilityService : AccessibilityService() {
                 val app = FocusGuardApp.getInstance()
                 val isFocusActive = app.userPreferences.isFocusActive.first()
 
-                if (!isFocusActive) return@launch
+                if (!isFocusActive) {
+                    if (overlayController.isOverlayShowing()) {
+                        withContext(Dispatchers.Main) {
+                            overlayController.hideBlockingOverlay()
+                        }
+                    }
+                    return@launch
+                }
 
                 // Check if this app is in the blocked list
                 if (packageName != YOUTUBE_PACKAGE) {
                     val isBlocked = app.blockedAppRepository.isAppBlocked(packageName)
-                    if (isBlocked && !isOverlayShownForCurrentApp) {
+                    Log.d(TAG, "Evaluated app=$packageName, isBlocked=$isBlocked")
+                    
+                    if (isBlocked) {
                         withContext(Dispatchers.Main) {
-                            overlayManager.showOverlay("This app is blocked during your focus session") {
-                                // Send to home screen for full app blocks
+                            overlayController.showBlockingOverlay("This app is blocked during your focus session") {
                                 val homeIntent = Intent(Intent.ACTION_MAIN).apply {
                                     addCategory(Intent.CATEGORY_HOME)
                                     flags = Intent.FLAG_ACTIVITY_NEW_TASK
@@ -137,7 +157,6 @@ class FocusGuardAccessibilityService : AccessibilityService() {
                             }
                             isOverlayShownForCurrentApp = true
                         }
-                        // Increment blocked attempt counter for the active session
                         incrementBlockedAttempts()
                     }
                 }

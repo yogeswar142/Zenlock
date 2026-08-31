@@ -40,6 +40,10 @@ class FocusGuardApp : Application() {
         KeywordRepositoryImpl(database.keywordDao())
     }
 
+    val digitalWellbeingRepository by lazy {
+        com.zenlock.focusguard.data.repository.DigitalWellbeingRepositoryImpl(this, blockedAppRepository)
+    }
+
     override fun onCreate() {
         super.onCreate()
         instance = this

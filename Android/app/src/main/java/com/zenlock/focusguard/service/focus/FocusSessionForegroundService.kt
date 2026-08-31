@@ -244,6 +244,9 @@ class FocusSessionForegroundService : Service() {
     private fun startTimer() {
         timerJob?.cancel()
         timerJob = serviceScope.launch {
+            // Launch background verification loop alongside timer
+            launchContinuousGuardLoop()
+
             while (remainingSeconds > 0 && isRunning) {
                 if (!isPaused) {
                     delay(1000)
@@ -272,6 +275,56 @@ class FocusSessionForegroundService : Service() {
         }
     }
 
+    /**
+     * Continuous Guard Loop (Polling-driven backup to AccessibilityService).
+     * Runs every 350ms while session is active to detect blocked apps launched pre-existing,
+     * via Recents, or directly after starting focus.
+     */
+    private fun CoroutineScope.launchContinuousGuardLoop() {
+        launch(Dispatchers.IO) {
+            val app = FocusGuardApp.getInstance()
+            val overlayController = com.zenlock.focusguard.service.overlay.FocusGuardOverlayController.getInstance(applicationContext)
+
+            while (isRunning && isActive) {
+                try {
+                    val isFocusActive = app.userPreferences.isFocusActive.first()
+                    if (!isFocusActive) {
+                        if (overlayController.isOverlayShowing()) {
+                            withContext(Dispatchers.Main) { overlayController.hideBlockingOverlay() }
+                        }
+                        break
+                    }
+
+                    val foregroundPkg = app.digitalWellbeingRepository.getForegroundPackage()
+                    if (foregroundPkg != null && foregroundPkg != "com.zenlock.focusguard" &&
+                        foregroundPkg != "com.android.systemui" && !foregroundPkg.contains("launcher", ignoreCase = true)) {
+                        
+                        val isBlocked = app.blockedAppRepository.isAppBlocked(foregroundPkg)
+                        if (isBlocked) {
+                            Log.d(TAG, "[GuardLoop] Detected foreground blocked app: $foregroundPkg. Enforcing overlay.")
+                            withContext(Dispatchers.Main) {
+                                overlayController.showBlockingOverlay("This app is blocked during your focus session") {
+                                    val homeIntent = Intent(Intent.ACTION_MAIN).apply {
+                                        addCategory(Intent.CATEGORY_HOME)
+                                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                                    }
+                                    startActivity(homeIntent)
+                                }
+                            }
+                        } else {
+                            if (overlayController.isOverlayShowing() && foregroundPkg != "com.google.android.youtube") {
+                                withContext(Dispatchers.Main) { overlayController.hideBlockingOverlay() }
+                            }
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error in continuous guard loop", e)
+                }
+                delay(350)
+            }
+        }
+    }
+
     private fun pauseFocusTimer() {
         isPaused = true
     }
@@ -296,24 +349,57 @@ class FocusSessionForegroundService : Service() {
             maxOf(1L, maxOf(elapsedFromTimer, elapsedFromTime))
         }
 
-        // Update session in database
-        serviceScope.launch {
+        val sessionJob = serviceScope.launch(NonCancellable + Dispatchers.IO) {
             try {
                 val app = FocusGuardApp.getInstance()
                 app.userPreferences.setFocusActive(false)
 
-                if (currentSessionId > 0) {
-                    val session = app.focusSessionRepository.getSessionById(currentSessionId)
-                    session?.let {
+                // Wait up to 1 second for initial session insertion if needed
+                var sessionId = currentSessionId
+                var retries = 0
+                while (sessionId <= 0 && retries < 10) {
+                    delay(100)
+                    sessionId = currentSessionId
+                    retries++
+                }
+
+                if (sessionId > 0) {
+                    val session = app.focusSessionRepository.getSessionById(sessionId)
+                    if (session != null) {
                         app.focusSessionRepository.updateSession(
-                            it.copy(
+                            session.copy(
                                 endTime = endTime,
                                 actualDurationSeconds = actualDuration,
                                 isCompleted = completed,
                                 blockedAttempts = FocusSessionService.blockedAttemptCount.get()
                             )
                         )
+                        Log.d(TAG, "Updated session ID=$sessionId: duration=${actualDuration}s, completed=$completed")
+                    } else {
+                        Log.w(TAG, "Session ID=$sessionId not found, inserting completed session object")
+                        val newSession = FocusSessionEntity(
+                            startTime = if (startTime > 0) startTime else endTime - (actualDuration * 1000),
+                            endTime = endTime,
+                            plannedDurationMinutes = durationMinutes,
+                            actualDurationSeconds = actualDuration,
+                            sessionType = "focus",
+                            isCompleted = completed,
+                            blockedAttempts = FocusSessionService.blockedAttemptCount.get()
+                        )
+                        app.focusSessionRepository.insertSession(newSession)
                     }
+                } else {
+                    val newSession = FocusSessionEntity(
+                        startTime = if (startTime > 0) startTime else endTime - (actualDuration * 1000),
+                        endTime = endTime,
+                        plannedDurationMinutes = durationMinutes,
+                        actualDurationSeconds = actualDuration,
+                        sessionType = "focus",
+                        isCompleted = completed,
+                        blockedAttempts = FocusSessionService.blockedAttemptCount.get()
+                    )
+                    app.focusSessionRepository.insertSession(newSession)
+                    Log.d(TAG, "Inserted session directly: duration=${actualDuration}s")
                 }
 
                 // Handle Gamification XP & Streak
@@ -340,10 +426,24 @@ class FocusSessionForegroundService : Service() {
             }
         }
 
+        // Synchronously wait for DB session update before stopping service
+        runBlocking {
+            try {
+                withTimeout(3000) {
+                    sessionJob.join()
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Timeout waiting for session save", e)
+            }
+        }
+
         isRunning = false
         isPaused = false
         remainingSeconds = 0
         currentSessionId = -1L
+
+        // Ensure overlay is removed on session stop
+        com.zenlock.focusguard.service.overlay.FocusGuardOverlayController.getInstance(applicationContext).hideBlockingOverlay()
 
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()

@@ -51,6 +51,19 @@ fun StatsScreen(viewModel: MainViewModel) {
         viewModel.loadStatistics()
     }
 
+    val lifecycleOwner = androidx.compose.ui.platform.LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                viewModel.loadStatistics()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
     val totalHours = weeklyFocusTime / 3600f
     val goalHours = 40f
     val completionPercent = ((totalHours / goalHours) * 100).coerceAtMost(100f)

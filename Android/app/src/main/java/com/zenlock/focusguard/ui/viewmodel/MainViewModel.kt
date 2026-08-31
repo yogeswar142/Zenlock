@@ -141,6 +141,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _recentSessions = MutableStateFlow<List<FocusSessionEntity>>(emptyList())
     val recentSessions: StateFlow<List<FocusSessionEntity>> = _recentSessions
 
+    // ===================== DIGITAL WELLBEING STATE =====================
+
+    private val _dailyReport = MutableStateFlow<com.zenlock.focusguard.domain.model.DailyDigitalReport?>(null)
+    val dailyReport: StateFlow<com.zenlock.focusguard.domain.model.DailyDigitalReport?> = _dailyReport
+
+    private val _weeklyReport = MutableStateFlow<List<com.zenlock.focusguard.domain.model.DailyUsageSummary>>(emptyList())
+    val weeklyReport: StateFlow<List<com.zenlock.focusguard.domain.model.DailyUsageSummary>> = _weeklyReport
+
     val allSessions: StateFlow<List<FocusSessionEntity>> = app.focusSessionRepository
         .getAllSessions()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -150,6 +158,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         seedDefaultKeywords()
         checkAndRecoverSession()
         startTimerPolling()
+        observeSessionsForStats()
+    }
+
+    private fun observeSessionsForStats() {
+        viewModelScope.launch {
+            allSessions.collect {
+                loadStatistics()
+            }
+        }
     }
 
     private fun checkAndRecoverSession() {
@@ -425,5 +442,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
 
         _weeklyChartData.value = chartData
+    }
+
+    // ===================== DIGITAL WELLBEING ACTIONS =====================
+
+    fun loadDigitalWellbeingData() {
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            try {
+                val repo = app.digitalWellbeingRepository
+                _dailyReport.value = repo.getDailyReport()
+                _weeklyReport.value = repo.getWeeklyReport()
+            } catch (e: Exception) {
+                android.util.Log.e("MainViewModel", "Error loading digital wellbeing data", e)
+            }
+        }
     }
 }

@@ -128,11 +128,12 @@ sealed class Screen(
     
     data object Home : Screen("home", "Home", Icons.Filled.Home, Icons.Outlined.Home)
     data object Apps : Screen("apps", "Apps", Icons.Filled.Apps, Icons.Outlined.Apps)
+    data object Wellbeing : Screen("wellbeing", "Wellbeing", Icons.Filled.DonutLarge, Icons.Outlined.DonutLarge)
     data object Stats : Screen("stats", "Stats", Icons.Filled.BarChart, Icons.Outlined.BarChart)
     data object Settings : Screen("settings", "Settings", Icons.Filled.Settings, Icons.Outlined.Settings)
 }
 
-val bottomNavItems = listOf(Screen.Home, Screen.Apps, Screen.Stats, Screen.Settings)
+val bottomNavItems = listOf(Screen.Home, Screen.Apps, Screen.Wellbeing, Screen.Stats, Screen.Settings)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -323,6 +324,9 @@ fun FocusGuardApp(
             }
             composable(Screen.Apps.route) {
                 AppsScreen(viewModel = viewModel)
+            }
+            composable(Screen.Wellbeing.route) {
+                WellbeingScreen(viewModel = viewModel)
             }
             composable(Screen.Stats.route) {
                 StatsScreen(viewModel = viewModel)

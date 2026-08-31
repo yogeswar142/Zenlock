@@ -27,6 +27,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 import com.zenlock.focusguard.ui.theme.*
 import com.zenlock.focusguard.ui.viewmodel.MainViewModel
 import com.zenlock.focusguard.util.PermissionUtils
@@ -59,6 +62,8 @@ fun HomeScreen(viewModel: MainViewModel) {
 
     val userXP by viewModel.userXP.collectAsState()
     val userStreak by viewModel.userStreak.collectAsState()
+
+    var showCustomTimerDialog by remember { mutableStateOf(false) }
 
     // Motivational quotes
     val quotes = listOf(
@@ -143,23 +148,59 @@ fun HomeScreen(viewModel: MainViewModel) {
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // ── Large Timer ──
+            // ── Large Timer (Clickable when unstarted to set custom timer) ──
             val displayTime = if (isFocusActive) {
                 TimeUtils.formatTimer(remainingSeconds)
             } else {
                 TimeUtils.formatTimer((focusDuration * 60).toLong())
             }
 
-            Text(
-                text = displayTime,
-                fontSize = 96.sp,
-                fontWeight = FontWeight.ExtraBold,
-                fontFamily = Manrope,
-                color = ZenOnSurface,
-                letterSpacing = (-4).sp,
-                textAlign = TextAlign.Center,
-                lineHeight = 96.sp
-            )
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(24.dp))
+                    .then(
+                        if (!isFocusActive) {
+                            Modifier.clickable { showCustomTimerDialog = true }
+                        } else Modifier
+                    )
+                    .padding(vertical = 8.dp, horizontal = 16.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Text(
+                        text = displayTime,
+                        fontSize = 96.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        fontFamily = Manrope,
+                        color = ZenOnSurface,
+                        letterSpacing = (-4).sp,
+                        textAlign = TextAlign.Center,
+                        lineHeight = 96.sp
+                    )
+                    if (!isFocusActive) {
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Icon(
+                            imageVector = Icons.Outlined.Edit,
+                            contentDescription = "Edit timer",
+                            tint = ZenPrimaryContainer.copy(alpha = 0.8f),
+                            modifier = Modifier.size(28.dp)
+                        )
+                    }
+                }
+                if (!isFocusActive) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Tap timer to customize duration",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = ZenOutline.copy(alpha = 0.8f),
+                        fontSize = 11.sp,
+                        letterSpacing = 0.5.sp
+                    )
+                }
+            }
 
             Spacer(modifier = Modifier.height(24.dp))
 
@@ -205,7 +246,7 @@ fun HomeScreen(viewModel: MainViewModel) {
         ) {
             BentoStatCard(
                 icon = Icons.Outlined.Timer,
-                value = String.format("%.1fh", todayFocusTime / 3600f),
+                value = TimeUtils.formatDuration(todayFocusTime),
                 label = "TIME FOCUSED",
                 modifier = Modifier.weight(1f)
             )
@@ -230,6 +271,18 @@ fun HomeScreen(viewModel: MainViewModel) {
         )
 
         Spacer(modifier = Modifier.weight(0.1f))
+
+        // Custom Timer Dialog Pop-up
+        if (showCustomTimerDialog && !isFocusActive) {
+            CustomTimerDialog(
+                initialDurationMinutes = focusDuration,
+                onDismiss = { showCustomTimerDialog = false },
+                onConfirm = { customMinutes ->
+                    viewModel.setFocusDuration(customMinutes)
+                    showCustomTimerDialog = false
+                }
+            )
+        }
     }
 }
 
@@ -541,3 +594,208 @@ private fun PermissionRow(
         }
     }
 }
+
+@Composable
+private fun CustomTimerDialog(
+    initialDurationMinutes: Int,
+    onDismiss: () -> Unit,
+    onConfirm: (Int) -> Unit
+) {
+    var minutesText by remember { mutableStateOf(initialDurationMinutes.toString()) }
+    val currentMinutes = minutesText.toIntOrNull() ?: initialDurationMinutes
+    val validMinutes = currentMinutes.coerceIn(1, 300)
+
+    val presetValues = listOf(15, 25, 30, 45, 60, 90, 120, 180)
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = ZenCard,
+        shape = RoundedCornerShape(24.dp),
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Outlined.Timer,
+                    contentDescription = null,
+                    tint = ZenPrimaryContainer,
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.width(10.dp))
+                Text(
+                    text = "Custom Focus Timer",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = ZenOnSurface
+                )
+            }
+        },
+        text = {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text = "Set your desired Pomodoro duration",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = ZenOutline
+                )
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                // Time display with quick adjustment buttons
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    FilledIconButton(
+                        onClick = {
+                            val newMins = (validMinutes - 5).coerceAtLeast(1)
+                            minutesText = newMins.toString()
+                        },
+                        colors = IconButtonDefaults.filledIconButtonColors(
+                            containerColor = ZenSurfaceContainerLow,
+                            contentColor = ZenOnSurface
+                        ),
+                        modifier = Modifier.size(44.dp)
+                    ) {
+                        Text("-5", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                    }
+
+                    Spacer(modifier = Modifier.width(12.dp))
+
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = ZenSurfaceContainerLow),
+                        shape = RoundedCornerShape(16.dp),
+                        border = androidx.compose.foundation.BorderStroke(
+                            1.dp,
+                            ZenPrimaryContainer.copy(alpha = 0.3f)
+                        ),
+                        modifier = Modifier.padding(horizontal = 4.dp)
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp)
+                        ) {
+                            Text(
+                                text = TimeUtils.formatTimer((validMinutes * 60).toLong()),
+                                fontSize = 34.sp,
+                                fontWeight = FontWeight.Bold,
+                                fontFamily = Manrope,
+                                color = ZenPrimaryContainer
+                            )
+                            Text(
+                                text = "$validMinutes ${if (validMinutes == 1) "minute" else "minutes"}",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = ZenOutline
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.width(12.dp))
+
+                    FilledIconButton(
+                        onClick = {
+                            val newMins = (validMinutes + 5).coerceAtMost(300)
+                            minutesText = newMins.toString()
+                        },
+                        colors = IconButtonDefaults.filledIconButtonColors(
+                            containerColor = ZenSurfaceContainerLow,
+                            contentColor = ZenOnSurface
+                        ),
+                        modifier = Modifier.size(44.dp)
+                    ) {
+                        Text("+5", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                // Interactive slider
+                Slider(
+                    value = validMinutes.toFloat(),
+                    onValueChange = { minutesText = it.toInt().toString() },
+                    valueRange = 1f..180f,
+                    steps = 179,
+                    colors = SliderDefaults.colors(
+                        thumbColor = ZenPrimaryContainer,
+                        activeTrackColor = ZenPrimaryContainer,
+                        inactiveTrackColor = ZenSurfaceContainerHigh
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Quick preset chips
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState())
+                ) {
+                    presetValues.forEach { preset ->
+                        val isSelected = preset == validMinutes
+                        FilterChip(
+                            selected = isSelected,
+                            onClick = { minutesText = preset.toString() },
+                            label = {
+                                Text(
+                                    text = "${preset}m",
+                                    fontSize = 12.sp,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                )
+                            },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = ZenPrimaryContainer,
+                                selectedLabelColor = Color.White,
+                                containerColor = ZenSurfaceContainerLow,
+                                labelColor = ZenOutline
+                            ),
+                            shape = RoundedCornerShape(50)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Numeric input text field
+                OutlinedTextField(
+                    value = minutesText,
+                    onValueChange = { input ->
+                        if (input.isEmpty() || input.all { it.isDigit() }) {
+                            minutesText = input
+                        }
+                    },
+                    label = { Text("Exact minutes") },
+                    placeholder = { Text("e.g. 25") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    singleLine = true,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = ZenPrimaryContainer,
+                        unfocusedBorderColor = ZenSurfaceContainerHigh,
+                        cursorColor = ZenPrimaryContainer,
+                        focusedTextColor = ZenOnSurface,
+                        unfocusedTextColor = ZenOnSurface
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = { onConfirm(validMinutes) },
+                colors = ButtonDefaults.buttonColors(containerColor = ZenPrimaryContainer),
+                shape = RoundedCornerShape(50)
+            ) {
+                Text("Set Timer", fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel", color = ZenOnSurfaceVariant)
+            }
+        }
+    )
+}
+
